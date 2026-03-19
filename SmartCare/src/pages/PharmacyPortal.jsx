@@ -21,6 +21,9 @@ export default function PharmacyPortal() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [filter, setFilter] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [newMed, setNewMed] = useState({ medicine_name: '', stock_count: 100, daily_burn_rate: 5, reorder_level: 20 });
 
   async function fetchInventory() {
     const { data } = await supabase.from('inventory').select('*').order('medicine_name');
@@ -50,6 +53,30 @@ export default function PharmacyPortal() {
     
     setProcessing(false);
     if (error) alert(error.message);
+  };
+
+  // Add new medicine
+  const handleAddMedicine = async () => {
+    if (!newMed.medicine_name.trim()) { alert('Please enter a medicine name!'); return; }
+    setAdding(true);
+    const { error } = await supabase.from('inventory').insert([{
+      medicine_name: newMed.medicine_name.trim(),
+      stock_count: parseInt(newMed.stock_count) || 100,
+      daily_burn_rate: parseInt(newMed.daily_burn_rate) || 5,
+      reorder_level: parseInt(newMed.reorder_level) || 20,
+    }]);
+    setAdding(false);
+    if (error) { alert('Failed to add: ' + error.message); return; }
+    setShowAddModal(false);
+    setNewMed({ medicine_name: '', stock_count: 100, daily_burn_rate: 5, reorder_level: 20 });
+    fetchInventory();
+  };
+
+  // Delete medicine
+  const handleDelete = async (id, name) => {
+    if (!confirm(`Remove ${name} from inventory?`)) return;
+    await supabase.from('inventory').delete().eq('id', id);
+    fetchInventory();
   };
 
   const filtered = inventory.filter(i => i.medicine_name.toLowerCase().includes(filter.toLowerCase()));
@@ -106,7 +133,9 @@ export default function PharmacyPortal() {
                 />
               </div>
             </div>
-            <button className="w-full xl:w-auto px-12 py-6 bg-slate-900 text-white font-black rounded-[2rem] hover:bg-black shadow-2xl shadow-slate-200 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-[10px] active:scale-95">
+            <button 
+              onClick={() => setShowAddModal(true)}
+              className="w-full xl:w-auto px-12 py-6 bg-slate-900 text-white font-black rounded-[2rem] hover:bg-black shadow-2xl shadow-slate-200 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-[10px] active:scale-95">
               <Zap size={20} className="text-emerald-400" />
               Register New Stock
             </button>
@@ -183,7 +212,9 @@ export default function PharmacyPortal() {
                             {processing ? <Activity size={12} className="animate-spin" /> : <ChevronRight size={14} />}
                             Dispense
                           </button>
-                          <button className="p-3 bg-white border border-slate-100 rounded-xl text-slate-300 hover:text-rose-500 hover:border-rose-100 transition-all shadow-sm">
+                          <button 
+                            onClick={() => handleDelete(item.id, item.medicine_name)}
+                            className="p-3 bg-white border border-slate-100 rounded-xl text-slate-300 hover:text-rose-500 hover:border-rose-100 transition-all shadow-sm">
                             <Trash2 size={20} />
                           </button>
                         </div>
@@ -241,6 +272,51 @@ export default function PharmacyPortal() {
         </div>
 
       </div>
+
+      {/* Add Medicine Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-slate-100">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-black text-slate-900 flex items-center gap-2"><Package size={20} className="text-emerald-600" /> Register New Medicine</h2>
+              <button onClick={() => setShowAddModal(false)} className="p-2 text-slate-400 hover:text-slate-900 text-xl">✕</button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Medicine Name</label>
+                <input type="text" placeholder="e.g. Amoxicillin 500mg"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                  value={newMed.medicine_name} onChange={(e) => setNewMed({ ...newMed, medicine_name: e.target.value })} />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Stock</label>
+                  <input type="number" min="1"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-900 text-center focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                    value={newMed.stock_count} onChange={(e) => setNewMed({ ...newMed, stock_count: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Burn/Day</label>
+                  <input type="number" min="1"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-900 text-center focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                    value={newMed.daily_burn_rate} onChange={(e) => setNewMed({ ...newMed, daily_burn_rate: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Reorder</label>
+                  <input type="number" min="1"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-900 text-center focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                    value={newMed.reorder_level} onChange={(e) => setNewMed({ ...newMed, reorder_level: e.target.value })} />
+                </div>
+              </div>
+              <button onClick={handleAddMedicine} disabled={adding}
+                className="w-full bg-emerald-600 text-white font-bold py-4 rounded-xl hover:bg-emerald-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                {adding ? <Activity size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                Add to Inventory
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
