@@ -18,25 +18,45 @@ import {
 import { supabase } from '../utils/supabaseClient';
 
 export default function EmergencyProfile() {
-  const { id } = useParams(); // Now this is patient_id (e.g. P1021)
+  const { id } = useParams();
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [password, setPassword] = useState('');
-  const [isUnlocked, setIsUnlocked] = useState(false);
   const [records, setRecords] = useState([]);
+
+  // Restore unlock state from localStorage (survives refresh)
+  const [isUnlocked, setIsUnlocked] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(`smartcare_unlock_${id}`));
+      if (saved?.unlocked && saved?.expiresAt && Date.now() < saved.expiresAt) return true;
+      // Also check the global share expiry
+      const share = JSON.parse(localStorage.getItem('smartcare_share'));
+      if (saved?.unlocked && share?.expiresAt && Date.now() < share.expiresAt) return true;
+    } catch {}
+    return false;
+  });
+
+  async function fetchRecords() {
+    const { data, error } = await supabase
+      .from('medical_records')
+      .select('*')
+      .eq('patient_id', id)
+      .order('created_at', { ascending: false });
+    
+    if (!error) setRecords(data || []);
+  }
 
   useEffect(() => {
     async function fetchPatient() {
       const { data, error } = await supabase
         .from('patients')
         .select('*')
-        .eq('patient_id', id) // Look up by sequential ID
+        .eq('patient_id', id)
         .single();
       
       if (!error && data) {
         setPatient(data);
       } else {
-        // Fallback for UUID search if needed, but primary is patient_id
         const { data: uuidData } = await supabase
           .from('patients')
           .select('*')
@@ -47,35 +67,38 @@ export default function EmergencyProfile() {
       setLoading(false);
     }
     fetchPatient();
+    // If restored as unlocked from localStorage, also fetch records
+    if (isUnlocked) fetchRecords();
   }, [id]);
+
+  // Save unlock + fetch records
+  const unlockAndSave = () => {
+    setIsUnlocked(true);
+    fetchRecords();
+    // Determine expiry: use share timer from localStorage, or default 30 min
+    let expiresAt = Date.now() + 30 * 60 * 1000;
+    try {
+      const share = JSON.parse(localStorage.getItem('smartcare_share'));
+      if (share?.expiresAt) expiresAt = share.expiresAt;
+    } catch (e) { /* ignore */ }
+    localStorage.setItem(`smartcare_unlock_${id}`, JSON.stringify({ unlocked: true, expiresAt }));
+  };
 
   const handleUnlock = () => {
     // Check sharing password
     if (password === patient.sharing_password) {
-      setIsUnlocked(true);
-      fetchRecords();
+      unlockAndSave();
       return;
     }
     // Check OTP from URL params
     const params = new URLSearchParams(window.location.search);
     const urlOtp = params.get('otp');
     if (urlOtp && password === urlOtp) {
-      setIsUnlocked(true);
-      fetchRecords();
+      unlockAndSave();
       return;
     }
     alert("Verification Failed: Incorrect password or OTP.");
   };
-
-  async function fetchRecords() {
-    const { data, error } = await supabase
-      .from('medical_records')
-      .select('*')
-      .eq('patient_id', id)
-      .order('created_at', { ascending: false });
-    
-    if (!error) setRecords(data);
-  }
 
   if (loading) return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-12">
