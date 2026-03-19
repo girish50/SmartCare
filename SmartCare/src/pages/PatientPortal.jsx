@@ -19,13 +19,29 @@ export default function PatientPortal() {
   const [editData, setEditData] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // OTP-based sharing
+  // OTP-based sharing — restore from localStorage on mount
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareTimer, setShareTimer] = useState(10);
-  const [shareLink, setShareLink] = useState('');
-  const [shareLinkActive, setShareLinkActive] = useState(false);
-  const [shareCountdown, setShareCountdown] = useState(0);
-  const [generatedOTP, setGeneratedOTP] = useState('');
+  const [shareLink, setShareLink] = useState(() => {
+    try { const s = JSON.parse(localStorage.getItem('smartcare_share')); return s?.link || ''; } catch { return ''; }
+  });
+  const [shareLinkActive, setShareLinkActive] = useState(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem('smartcare_share'));
+      if (s?.expiresAt && Date.now() < s.expiresAt) return true;
+      return false;
+    } catch { return false; }
+  });
+  const [shareCountdown, setShareCountdown] = useState(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem('smartcare_share'));
+      if (s?.expiresAt) return Math.max(0, Math.floor((s.expiresAt - Date.now()) / 1000));
+      return 0;
+    } catch { return 0; }
+  });
+  const [generatedOTP, setGeneratedOTP] = useState(() => {
+    try { const s = JSON.parse(localStorage.getItem('smartcare_share')); return s?.otp || ''; } catch { return ''; }
+  });
 
   // Password update
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -88,11 +104,14 @@ export default function PatientPortal() {
     } else alert('Update failed: ' + error.message);
   };
 
-  // Generate OTP + timed share link
+  // Generate OTP + timed share link — persists to localStorage
   const generateOTPShare = () => {
-    const otp = String(Math.floor(100000 + Math.random() * 900000)); // 6-digit OTP
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
     const token = Math.random().toString(36).substring(2, 10).toUpperCase();
     const link = `${window.location.origin}/e/${patient.patient_id}?token=${token}&otp=${otp}`;
+    const expiresAt = Date.now() + shareTimer * 60 * 1000;
+    // Save to localStorage so it survives page refresh
+    localStorage.setItem('smartcare_share', JSON.stringify({ otp, link, expiresAt }));
     setGeneratedOTP(otp);
     setShareLink(link);
     setShareLinkActive(true);
@@ -100,13 +119,20 @@ export default function PatientPortal() {
     setShowShareModal(false);
   };
 
+  // Revoke share helper
+  const revokeShare = () => {
+    setShareLinkActive(false);
+    setShareLink('');
+    setShareCountdown(0);
+    setGeneratedOTP('');
+    localStorage.removeItem('smartcare_share');
+  };
+
   // Countdown timer
   useEffect(() => {
     if (shareCountdown <= 0) {
       if (shareLinkActive) {
-        setShareLinkActive(false);
-        setShareLink('');
-        setGeneratedOTP('');
+        revokeShare();
       }
       return;
     }
@@ -376,7 +402,7 @@ export default function PatientPortal() {
                 <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-center">
                   <p className="text-xs text-amber-700 font-bold">⏱️ OTP expires in {formatCountdown(shareCountdown)}</p>
                 </div>
-                <button onClick={() => { setShareLinkActive(false); setShareLink(''); setShareCountdown(0); setGeneratedOTP(''); }}
+                <button onClick={revokeShare}
                   className="w-full py-3 text-rose-600 text-sm font-bold bg-rose-50 rounded-xl hover:bg-rose-100 transition-all">
                   Revoke OTP Now
                 </button>

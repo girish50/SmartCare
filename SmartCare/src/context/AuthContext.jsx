@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext } from 'react';
 
 const AuthContext = createContext(null);
 
@@ -6,23 +6,25 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [role, setRole] = useState(null); // 'patient', 'staff', 'doctor', 'admin'
-  const [loading, setLoading] = useState(true);
-
-  // Load from localStorage on mount
-  useEffect(() => {
+// Read auth from localStorage synchronously (no useEffect delay)
+function getStoredAuth() {
+  try {
     const saved = localStorage.getItem('smartcare_auth');
     if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setUser(parsed.user);
-        setRole(parsed.role);
-      } catch {}
+      const parsed = JSON.parse(saved);
+      if (parsed.user && parsed.role) {
+        return { user: parsed.user, role: parsed.role };
+      }
     }
-    setLoading(false);
-  }, []);
+  } catch {}
+  return { user: null, role: null };
+}
+
+export function AuthProvider({ children }) {
+  // Initialize state synchronously from localStorage — no loading delay
+  const stored = getStoredAuth();
+  const [user, setUser] = useState(stored.user);
+  const [role, setRole] = useState(stored.role);
 
   const login = (userData, userRole) => {
     setUser(userData);
@@ -53,11 +55,11 @@ export function AuthProvider({ children }) {
     return access[role]?.includes(page) || false;
   };
 
-  const value = { user, role, loading, login, logout, canAccess };
+  const value = { user, role, login, logout, canAccess };
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }
