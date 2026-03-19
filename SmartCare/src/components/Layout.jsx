@@ -1,25 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
-  Stethoscope, 
-  Menu, 
-  X, 
-  Home, 
-  UserPlus, 
-  Users, 
-  ClipboardList, 
-  Settings, 
-  ShoppingCart, 
-  Activity, 
-  ChevronDown,
-  Shield
+  Stethoscope, Menu, X, Home, UserPlus, Users, ClipboardList, 
+  Settings, ShoppingCart, Activity, ChevronDown, Shield, LogIn, LogOut, User
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export default function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [staffOpen, setStaffOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const dropdownRef = useRef(null);
+  const { user, role, logout, canAccess } = useAuth();
 
   const isActive = (path) => location.pathname === path;
 
@@ -34,27 +27,29 @@ export default function Layout() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Close dropdown on route change
+  // Close on route change
   useEffect(() => {
     setStaffOpen(false);
     setMobileOpen(false);
   }, [location.pathname]);
 
-  const mainLinks = [
-    { to: '/', label: 'Home', icon: <Home size={15} /> },
-    { to: '/register', label: 'Register', icon: <UserPlus size={15} /> },
-    { to: '/stats', label: 'Live Stats', icon: <Activity size={15} /> },
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
+
+  // Define staff links based on role
+  const allStaffLinks = [
+    { to: '/patient', label: 'Patient Portal', icon: <Users size={16} />, desc: 'View records & QR codes', page: 'patient' },
+    { to: '/reception', label: 'Reception Desk', icon: <ClipboardList size={16} />, desc: 'Check-in & AI triage', page: 'reception' },
+    { to: '/doctor', label: 'Doctor Console', icon: <Stethoscope size={16} />, desc: 'Queue & consultations', page: 'doctor' },
+    { to: '/admin', label: 'Admin Command', icon: <Settings size={16} />, desc: 'Operations & analytics', page: 'admin' },
+    { to: '/pharmacy', label: 'Smart Pharmacy', icon: <ShoppingCart size={16} />, desc: 'Inventory & dispensing', page: 'pharmacy' },
   ];
 
-  const staffLinks = [
-    { to: '/patient', label: 'Patient Portal', icon: <Users size={16} />, desc: 'View records & QR codes' },
-    { to: '/reception', label: 'Reception Desk', icon: <ClipboardList size={16} />, desc: 'Check-in & AI triage' },
-    { to: '/doctor', label: 'Doctor Console', icon: <Stethoscope size={16} />, desc: 'Queue & consultations' },
-    { to: '/admin', label: 'Admin Command', icon: <Settings size={16} />, desc: 'Operations & analytics' },
-    { to: '/pharmacy', label: 'Smart Pharmacy', icon: <ShoppingCart size={16} />, desc: 'Inventory & dispensing' },
-  ];
-
-  const isStaffPage = ['/patient','/reception','/doctor','/admin','/pharmacy'].includes(location.pathname);
+  // Filter staff links by role
+  const staffLinks = allStaffLinks.filter(link => canAccess(link.page));
+  const isStaffPage = allStaffLinks.some(l => l.to === location.pathname);
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-text-primary font-sans">
@@ -72,63 +67,76 @@ export default function Layout() {
             
             {/* Desktop Nav */}
             <nav className="hidden lg:flex items-center gap-1">
-              {mainLinks.map((link) => (
-                <Link 
-                  key={link.to} 
-                  to={link.to} 
-                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-bold transition-all ${
-                    isActive(link.to) 
-                      ? 'bg-indigo-50 text-indigo-600' 
-                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-                  }`}
-                >
-                  {link.icon} {link.label}
-                </Link>
-              ))}
+              <Link to="/" className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-bold transition-all ${
+                isActive('/') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+              }`}>
+                <Home size={15} /> Home
+              </Link>
+              <Link to="/register" className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-bold transition-all ${
+                isActive('/register') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+              }`}>
+                <UserPlus size={15} /> Register
+              </Link>
+              <Link to="/stats" className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-bold transition-all ${
+                isActive('/stats') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+              }`}>
+                <Activity size={15} /> Live Stats
+              </Link>
               
-              {/* Staff Access Dropdown */}
-              <div ref={dropdownRef} className="relative">
-                <button 
-                  onClick={() => setStaffOpen(!staffOpen)}
-                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-bold transition-all ${
-                    isStaffPage
-                      ? 'bg-indigo-50 text-indigo-600'
-                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-                  }`}
-                >
-                  <Shield size={15} /> Staff Access 
-                  <ChevronDown size={13} className={`transition-transform duration-200 ${staffOpen ? 'rotate-180' : ''}`} />
-                </button>
-                
-                {staffOpen && (
-                  <div className="absolute top-full right-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl shadow-slate-200/60 border border-slate-100 p-2 z-[100]">
-                    {staffLinks.map((link) => (
-                      <Link 
-                        key={link.to} 
-                        to={link.to}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                          isActive(link.to) ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'
-                        }`}
-                      >
-                        <div className={`p-2 rounded-lg ${isActive(link.to) ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-400'}`}>
-                          {link.icon}
-                        </div>
-                        <div>
-                          <div className="text-sm font-bold">{link.label}</div>
-                          <div className="text-[10px] text-slate-400">{link.desc}</div>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
+              {/* Staff Access Dropdown (only if user has access to any staff pages) */}
+              {staffLinks.length > 0 && (
+                <div ref={dropdownRef} className="relative">
+                  <button 
+                    onClick={() => setStaffOpen(!staffOpen)}
+                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-bold transition-all ${
+                      isStaffPage ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Shield size={15} /> Staff Access 
+                    <ChevronDown size={13} className={`transition-transform duration-200 ${staffOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {staffOpen && (
+                    <div className="absolute top-full right-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl shadow-slate-200/60 border border-slate-100 p-2 z-[100]">
+                      {staffLinks.map((link) => (
+                        <Link key={link.to} to={link.to}
+                          className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                            isActive(link.to) ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'
+                          }`}>
+                          <div className={`p-2 rounded-lg ${isActive(link.to) ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-400'}`}>
+                            {link.icon}
+                          </div>
+                          <div>
+                            <div className="text-sm font-bold">{link.label}</div>
+                            <div className="text-[10px] text-slate-400">{link.desc}</div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Auth Button */}
+              {user ? (
+                <div className="flex items-center gap-2 ml-2">
+                  <span className="text-xs font-bold text-slate-400 bg-slate-50 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                    <User size={12} /> {user.name?.split(' ')[0]} <span className="text-indigo-600 uppercase text-[8px] font-black tracking-widest">({role})</span>
+                  </span>
+                  <button onClick={handleLogout}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold text-rose-500 hover:bg-rose-50 transition-all">
+                    <LogOut size={15} /> Logout
+                  </button>
+                </div>
+              ) : (
+                <Link to="/login" className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-all ml-2">
+                  <LogIn size={15} /> Login
+                </Link>
+              )}
             </nav>
 
             {/* Mobile Toggle */}
-            <button 
-              onClick={() => setMobileOpen(!mobileOpen)} 
-              className="lg:hidden p-2 text-slate-600 hover:text-slate-900"
-            >
+            <button onClick={() => setMobileOpen(!mobileOpen)} className="lg:hidden p-2 text-slate-600 hover:text-slate-900">
               {mobileOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
           </div>
@@ -138,22 +146,32 @@ export default function Layout() {
         {mobileOpen && (
           <div className="lg:hidden bg-white border-t border-slate-100 shadow-xl">
             <div className="max-w-7xl mx-auto px-4 py-4 space-y-1">
-              {mainLinks.map((link) => (
-                <Link key={link.to} to={link.to} onClick={() => setMobileOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm ${
-                    isActive(link.to) ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'
-                  }`}
-                >{link.icon} {link.label}</Link>
-              ))}
+              <Link to="/" onClick={() => setMobileOpen(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm ${isActive('/') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600'}`}><Home size={15} /> Home</Link>
+              <Link to="/register" onClick={() => setMobileOpen(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm ${isActive('/register') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600'}`}><UserPlus size={15} /> Register</Link>
+              <Link to="/stats" onClick={() => setMobileOpen(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm ${isActive('/stats') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600'}`}><Activity size={15} /> Live Stats</Link>
+              
+              {staffLinks.length > 0 && (
+                <div className="pt-2 border-t border-slate-100 mt-2">
+                  <p className="px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Staff Access</p>
+                  {staffLinks.map((link) => (
+                    <Link key={link.to} to={link.to} onClick={() => setMobileOpen(false)}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm ${isActive(link.to) ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600'}`}>
+                      {link.icon} {link.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
+              
               <div className="pt-2 border-t border-slate-100 mt-2">
-                <p className="px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Staff Access</p>
-                {staffLinks.map((link) => (
-                  <Link key={link.to} to={link.to} onClick={() => setMobileOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm ${
-                      isActive(link.to) ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >{link.icon} {link.label}</Link>
-                ))}
+                {user ? (
+                  <button onClick={() => { handleLogout(); setMobileOpen(false); }} className="flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm text-rose-600 w-full">
+                    <LogOut size={15} /> Logout ({user.name?.split(' ')[0]})
+                  </button>
+                ) : (
+                  <Link to="/login" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm text-indigo-600">
+                    <LogIn size={15} /> Login
+                  </Link>
+                )}
               </div>
             </div>
           </div>
