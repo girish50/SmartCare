@@ -19,9 +19,7 @@
 <br/>
 
 <p align="center">
-  <a href="https://smartcare-one.vercel.app">
-    <img src="https://img.shields.io/badge/🚀_TRY_THE_LIVE_DEMO-smartcare--one.vercel.app-4F46E5?style=for-the-badge&logo=vercel&logoColor=white&labelColor=312E81" />
-  </a>
+  <a href="https://smartcare-one.vercel.app">Live demo Smartcare Project</a>
 </p>
 
 <p align="center">
@@ -30,12 +28,12 @@
 
 > **Test Credentials:**
 >
-> | Role        | Login                                    | Password                      |
-> | ----------- | ---------------------------------------- | ----------------------------- |
-> | **Patient** | `P1001`                                  | _(set during registration)_   |
-> | **Staff**   | Register via Login → Staff → Register    | _(you choose on registration)_|
-> | **Doctor**  | Register via Login → Doctor → Register   | _(you choose on registration)_|
-> | **Admin**   | Register via Login → Admin → Register    | _(you choose on registration)_|
+> | Role        | Login                                  | Password                       |
+> | ----------- | -------------------------------------- | ------------------------------ |
+> | **Patient** | `P1001`                                | _(set during registration)_    |
+> | **Staff**   | Register via Login → Staff → Register  | _(you choose on registration)_ |
+> | **Doctor**  | Register via Login → Doctor → Register | _(you choose on registration)_ |
+> | **Admin**   | Register via Login → Admin → Register  | _(you choose on registration)_ |
 
 ---
 
