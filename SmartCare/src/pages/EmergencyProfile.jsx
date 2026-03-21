@@ -21,7 +21,10 @@ export default function EmergencyProfile() {
   const { id } = useParams();
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [password, setPassword] = useState('');
+  const [password, setPassword] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('otp') || '';
+  });
   const [records, setRecords] = useState([]);
 
   // Restore unlock state from localStorage (survives refresh)
@@ -67,8 +70,19 @@ export default function EmergencyProfile() {
       setLoading(false);
     }
     fetchPatient();
-    // If restored as unlocked from localStorage, also fetch records
-    if (isUnlocked) fetchRecords();
+    
+    // Auto-unlock if OTP is in the URL or already unlocked in localStorage
+    const params = new URLSearchParams(window.location.search);
+    const urlOtp = params.get('otp');
+    
+    if (isUnlocked || urlOtp) {
+      if (!isUnlocked && urlOtp) {
+         let expiresAt = Date.now() + 30 * 60 * 1000;
+         localStorage.setItem(`smartcare_unlock_${id}`, JSON.stringify({ unlocked: true, expiresAt }));
+         setIsUnlocked(true);
+      }
+      fetchRecords();
+    }
   }, [id]);
 
   // Save unlock + fetch records
