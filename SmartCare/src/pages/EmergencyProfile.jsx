@@ -77,27 +77,44 @@ export default function EmergencyProfile() {
 
       if (!currentPatient) return;
 
-      // Auto-unlock if OTP is in the URL or already unlocked in localStorage
+      // Validate OTP strictly against the global share state (for revocation support)
+      let isUrlOtpValid = false;
       const params = new URLSearchParams(window.location.search);
       const urlOtp = params.get('otp');
-      
+
       let isLocalUnlocked = false;
       try {
         const saved = JSON.parse(localStorage.getItem(`smartcare_unlock_${id}`));
         if (saved?.unlocked && saved?.expiresAt && Date.now() < saved.expiresAt) isLocalUnlocked = true;
         const share = JSON.parse(localStorage.getItem('smartcare_share'));
         if (share?.expiresAt && Date.now() < share.expiresAt) isLocalUnlocked = true;
+        
+        // Strict URL Validation: OTP must match the un-revoked share in localStorage
+        if (urlOtp && share && share.otp === urlOtp && Date.now() < share.expiresAt) {
+           isUrlOtpValid = true;
+        } else if (urlOtp && !share) {
+           // Fallback for cross-device: If share doesn't exist at all, trust the URL
+           // (Note: cross-device Revoke isn't physically possible without a DB table)
+           isUrlOtpValid = true;
+        }
       } catch { /* ignore error */ }
 
-      if (isLocalUnlocked || urlOtp) {
-        if (!isLocalUnlocked && urlOtp) {
+      if (isLocalUnlocked || isUrlOtpValid) {
+        if (!isLocalUnlocked && isUrlOtpValid) {
            let expiresAt = Date.now() + 30 * 60 * 1000;
+           try {
+             const share = JSON.parse(localStorage.getItem('smartcare_share'));
+             if (share?.expiresAt) expiresAt = share.expiresAt;
+           } catch { /* ignore error */ }
            localStorage.setItem(`smartcare_unlock_${id}`, JSON.stringify({ unlocked: true, expiresAt }));
            setTimeout(() => setIsUnlocked(true), 0);
         } else if (isLocalUnlocked) {
            setTimeout(() => setIsUnlocked(true), 0);
         }
         fetchRecords(currentPatient.id);
+      } else {
+        // If it was revoked, strictly lock the UI
+        setTimeout(() => setIsUnlocked(false), 0);
       }
     }
     init();
