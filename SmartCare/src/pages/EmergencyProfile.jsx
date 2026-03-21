@@ -35,7 +35,7 @@ export default function EmergencyProfile() {
       // Also check the global share expiry
       const share = JSON.parse(localStorage.getItem('smartcare_share'));
       if (saved?.unlocked && share?.expiresAt && Date.now() < share.expiresAt) return true;
-    } catch {}
+    } catch { /* ignore error */ }
     return false;
   });
 
@@ -87,15 +87,15 @@ export default function EmergencyProfile() {
         if (saved?.unlocked && saved?.expiresAt && Date.now() < saved.expiresAt) isLocalUnlocked = true;
         const share = JSON.parse(localStorage.getItem('smartcare_share'));
         if (saved?.unlocked && share?.expiresAt && Date.now() < share.expiresAt) isLocalUnlocked = true;
-      } catch {}
+      } catch { /* ignore error */ }
 
       if (isLocalUnlocked || urlOtp) {
         if (!isLocalUnlocked && urlOtp) {
            let expiresAt = Date.now() + 30 * 60 * 1000;
            localStorage.setItem(`smartcare_unlock_${id}`, JSON.stringify({ unlocked: true, expiresAt }));
-           setIsUnlocked(true);
+           setTimeout(() => setIsUnlocked(true), 0);
         } else if (isLocalUnlocked) {
-           setIsUnlocked(true);
+           setTimeout(() => setIsUnlocked(true), 0);
         }
         fetchRecords(currentPatient.id);
       }
@@ -112,7 +112,7 @@ export default function EmergencyProfile() {
     try {
       const share = JSON.parse(localStorage.getItem('smartcare_share'));
       if (share?.expiresAt) expiresAt = share.expiresAt;
-    } catch (e) { /* ignore */ }
+    } catch { /* ignore error */ }
     localStorage.setItem(`smartcare_unlock_${id}`, JSON.stringify({ unlocked: true, expiresAt }));
   };
 
