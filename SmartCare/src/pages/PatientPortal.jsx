@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   User, QrCode, Share2, ChevronRight, Droplet, AlertCircle, Calendar,
   Lock, Eye, EyeOff, Copy, Check, ShieldPlus, Zap, Key, Activity,
-  Clock, X, Timer, Shield, Clipboard, Plus
+  Clock, X, Timer, Shield, Clipboard, Plus, LogOut
 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { supabase } from '../utils/supabaseClient';
@@ -180,6 +180,14 @@ export default function PatientPortal() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('smartcare_patient_session');
+    localStorage.removeItem('smartcare_share');
+    setPatient(null);
+    setRecords([]);
+    setPhone('');
+  };
+
   const emergencyUrl = patient ? `${window.location.origin}/e/${patient.patient_id}` : '';
 
   // LOGIN SCREEN
@@ -235,6 +243,7 @@ export default function PatientPortal() {
               <button onClick={() => setEditMode(true)} className="px-5 py-2.5 bg-indigo-50 text-indigo-600 font-bold rounded-xl hover:bg-indigo-100 transition-all text-sm">✏️ Update Bio-Data</button>
               <button onClick={() => setShowPasswordModal(true)} className="px-5 py-2.5 bg-rose-50 text-rose-600 font-bold rounded-xl hover:bg-rose-100 transition-all text-sm flex items-center gap-2"><Lock size={14} /> Change Password</button>
               <button onClick={() => setShowShareModal(true)} className="px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all text-sm flex items-center gap-2"><Key size={16} /> Share via OTP</button>
+              <button onClick={handleLogout} className="px-5 py-2.5 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-all text-sm flex items-center gap-2"><LogOut size={14} /> Log Out</button>
             </div>
           </div>
         </div>

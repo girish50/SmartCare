@@ -13,7 +13,8 @@ import {
   Stethoscope,
   Activity,
   ShieldCheck,
-  ChevronDown
+  ChevronDown,
+  Key
 } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 
@@ -23,17 +24,17 @@ export default function EmergencyProfile() {
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState([]);
 
-  // Restore unlock state from localStorage (survives refresh)
-  const [isUnlocked, setIsUnlocked] = useState(() => {
+  // Auth Stage: 0 = Locked, 1 = Password Passed (need OTP), 2 = Decrypted
+  const [authStage, setAuthStage] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(`smartcare_unlock_${id}`));
-      if (saved?.unlocked && saved?.expiresAt && Date.now() < saved.expiresAt) return true;
-      // Also check the global share expiry
-      const share = JSON.parse(localStorage.getItem('smartcare_share'));
-      if (share?.expiresAt && Date.now() < share.expiresAt) return true;
+      if (saved?.unlocked && saved?.expiresAt && Date.now() < saved.expiresAt) return 2;
     } catch { /* ignore error */ }
-    return false;
+    return 0;
   });
+
+  const [passwordInput, setPasswordInput] = useState('');
+  const [otpInput, setOtpInput] = useState('');
 
   async function fetchRecords(uuid) {
     if (!uuid) return;
@@ -73,61 +74,78 @@ export default function EmergencyProfile() {
 
       if (!currentPatient) return;
 
-      // Validate OTP strictly against the global share state (for revocation support)
-      let isUrlOtpValid = false;
-      const params = new URLSearchParams(window.location.search);
-      const urlOtp = params.get('otp');
-
-      let isLocalUnlocked = false;
-      try {
-        const saved = JSON.parse(localStorage.getItem(`smartcare_unlock_${id}`));
-        if (saved?.unlocked && saved?.expiresAt && Date.now() < saved.expiresAt) isLocalUnlocked = true;
-        const share = JSON.parse(localStorage.getItem('smartcare_share'));
-        if (share?.expiresAt && Date.now() < share.expiresAt) isLocalUnlocked = true;
-        
-        // Strict URL Validation: OTP must match the un-revoked share in localStorage
-        if (urlOtp && share && share.otp === urlOtp && Date.now() < share.expiresAt) {
-           isUrlOtpValid = true;
-        } else if (urlOtp && !share) {
-           // Fallback for cross-device: If share doesn't exist at all, trust the URL
-           // (Note: cross-device Revoke isn't physically possible without a DB table)
-           isUrlOtpValid = true;
-        }
-      } catch { /* ignore error */ }
-
-      if (isLocalUnlocked || isUrlOtpValid) {
-        if (!isLocalUnlocked && isUrlOtpValid) {
-           let expiresAt = Date.now() + 30 * 60 * 1000;
-           try {
-             const share = JSON.parse(localStorage.getItem('smartcare_share'));
-             if (share?.expiresAt) expiresAt = share.expiresAt;
-           } catch { /* ignore error */ }
-           localStorage.setItem(`smartcare_unlock_${id}`, JSON.stringify({ unlocked: true, expiresAt }));
-           setTimeout(() => setIsUnlocked(true), 0);
-        } else if (isLocalUnlocked) {
-           setTimeout(() => setIsUnlocked(true), 0);
-        }
+      if (authStage === 2) {
         fetchRecords(currentPatient.id);
-      } else {
-        // If it was revoked, strictly lock the UI and wipe the local unlock key
-        localStorage.removeItem(`smartcare_unlock_${id}`);
-        setTimeout(() => setIsUnlocked(false), 0);
       }
     }
     init();
 
-    // Cross-tab Instant Revocation Listener
     const handleStorageChange = (e) => {
       if (e.key === 'smartcare_share' && !e.newValue) {
         localStorage.removeItem(`smartcare_unlock_${id}`);
-        setIsUnlocked(false);
+        setAuthStage(0);
       }
     };
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [id]);
+  }, [id, authStage]);
 
-  // Removed manual unlockAndSave and handleUnlock as the system is now purely OTP-link driven
+  const saveUnlockSession = () => {
+    let expiresAt = Date.now() + 30 * 60 * 1000;
+    try {
+      const share = JSON.parse(localStorage.getItem('smartcare_share'));
+      if (share?.expiresAt) expiresAt = share.expiresAt;
+    } catch { /* ignore error */ }
+    localStorage.setItem(`smartcare_unlock_${id}`, JSON.stringify({ unlocked: true, expiresAt }));
+    setAuthStage(2);
+    fetchRecords(patient.id);
+  };
+
+  const handlePasswordSubmit = () => {
+    if (passwordInput === patient.sharing_password) {
+      // Phase 1 passed. Check if URL already has OTP to auto-skip Phase 2.
+      const params = new URLSearchParams(window.location.search);
+      const urlOtp = params.get('otp');
+      
+      let isUrlOtpValid = false;
+      try {
+        const share = JSON.parse(localStorage.getItem('smartcare_share'));
+        if (urlOtp && share && share.otp === urlOtp && Date.now() < share.expiresAt) {
+          isUrlOtpValid = true;
+        } else if (urlOtp && !share) {
+          // Cross-device link fallback
+          isUrlOtpValid = true;
+        }
+      } catch { /* ignore error */ }
+
+      if (isUrlOtpValid) {
+        saveUnlockSession();
+      } else {
+        setAuthStage(1); // Proceed to OTP check
+      }
+    } else {
+      alert("Verification Failed: Incorrect Patient Sharing Password.");
+    }
+  };
+
+  const handleOtpSubmit = () => {
+    let isOtpValid = false;
+    try {
+      const share = JSON.parse(localStorage.getItem('smartcare_share'));
+      if (share && share.otp === otpInput && Date.now() < share.expiresAt) {
+        isOtpValid = true;
+      } else if (!share && otpInput.length === 6) {
+        // Cross-device fallback for demo purposes without a DB column
+        isOtpValid = true;
+      }
+    } catch {}
+
+    if (isOtpValid) {
+      saveUnlockSession();
+    } else {
+      alert("Verification Failed: Invalid or Expired OTP.");
+    }
+  };
 
   if (loading) return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-12">
@@ -218,18 +236,72 @@ export default function EmergencyProfile() {
           </div>
         </div>
 
-        {/* The Locked Section */}
-        {!isUnlocked ? (
+        {/* The Locked Section (Stages 0 & 1) */}
+        {authStage < 2 ? (
           <div className="glass-card p-16 text-center bg-white border-2 border-slate-100 shadow-2xl shadow-indigo-500/5 relative overflow-hidden group">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-indigo-50 rounded-full blur-3xl opacity-50 -z-10 group-hover:scale-150 transition-transform duration-1000"></div>
             
-            <div className="w-24 h-24 bg-white border-8 border-slate-50 rounded-full flex items-center justify-center mx-auto mb-10 shadow-xl relative animate-pulse">
+            <div className="w-24 h-24 bg-white border-8 border-slate-50 rounded-full flex items-center justify-center mx-auto mb-10 shadow-xl relative mt-4">
               <Lock size={36} className="text-indigo-600" />
             </div>
-            <h2 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">Clinical Records Encrypted</h2>
-            <p className="text-slate-500 mb-12 max-w-sm mx-auto font-medium leading-relaxed italic">
-               Access strictly permitted via official secure OTP link or active QR scan. Please request a new link if your session expired.
-            </p>
+            
+            {authStage === 0 ? (
+              <div className="animate-in fade-in zoom-in-95 duration-500">
+                <h2 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">Clinical Records Encrypted</h2>
+                <p className="text-slate-500 mb-12 max-w-sm mx-auto font-medium leading-relaxed italic">
+                   Stage 1 Verification. Enter the patient's personal sharing password to begin decryption.
+                </p>
+                <div className="max-w-xs mx-auto space-y-6">
+                  <div className="relative">
+                    <input 
+                      type="password"
+                      placeholder="Sharing Password"
+                      style={{ color: '#000' }}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-5 text-center font-black text-xl tracking-widest focus:ring-4 focus:ring-indigo-100 focus:border-indigo-600 outline-none transition-all shadow-inner"
+                      value={passwordInput}
+                      onChange={(e) => setPasswordInput(e.target.value)}
+                    />
+                  </div>
+                  <button 
+                    onClick={handlePasswordSubmit}
+                    disabled={!passwordInput}
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-black py-6 rounded-[1.5rem] flex items-center justify-center gap-3 shadow-2xl shadow-indigo-100 transition-all hover:-translate-y-1 active:scale-[0.98] uppercase tracking-widest text-[10px]"
+                  >
+                    <Lock size={20} /> Verify Password
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="animate-in fade-in slide-in-from-right-8 duration-500">
+                <h2 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">OTP Gateway</h2>
+                <div className="flex items-center justify-center gap-2 mb-10 text-emerald-600 font-bold text-sm bg-emerald-50 w-max mx-auto px-4 py-2 rounded-full">
+                  <ShieldCheck size={16} /> Password Verified
+                </div>
+                <p className="text-slate-500 mb-12 max-w-sm mx-auto font-medium leading-relaxed italic">
+                   Stage 2 Verification. Please obtain the 6-digit secure token from the patient.
+                </p>
+                <div className="max-w-xs mx-auto space-y-6">
+                  <div className="relative">
+                    <input 
+                      type="text"
+                      maxLength="6"
+                      placeholder="• • • • • •"
+                      style={{ color: '#000' }}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-5 text-center font-black text-3xl tracking-[0.5em] focus:ring-4 focus:ring-teal-100 focus:border-teal-600 outline-none transition-all shadow-inner font-mono"
+                      value={otpInput}
+                      onChange={(e) => setOtpInput(e.target.value)}
+                    />
+                  </div>
+                  <button 
+                    onClick={handleOtpSubmit}
+                    disabled={otpInput.length < 6}
+                    className="w-full bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white font-black py-6 rounded-[1.5rem] flex items-center justify-center gap-3 shadow-2xl shadow-teal-100 transition-all hover:-translate-y-1 active:scale-[0.98] uppercase tracking-widest text-[10px]"
+                  >
+                    <Key size={20} /> Authorize Decryption
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
@@ -241,10 +313,13 @@ export default function EmergencyProfile() {
                 <span className="text-xs font-black text-emerald-900 uppercase tracking-widest">Neural Decryption Successful</span>
               </div>
               <button 
-                onClick={() => setIsUnlocked(false)}
-                className="p-3 hover:bg-emerald-100 rounded-xl transition-colors text-emerald-600"
+                onClick={() => {
+                  setAuthStage(0);
+                  localStorage.removeItem(`smartcare_unlock_${id}`);
+                }}
+                className="p-3 hover:bg-emerald-100 rounded-xl transition-colors text-emerald-600 flex items-center gap-2 font-bold text-sm"
               >
-                <Lock size={18} />
+                <Lock size={16} /> Re-Lock
               </button>
             </div>
 
