@@ -21,10 +21,6 @@ export default function EmergencyProfile() {
   const { id } = useParams();
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [password, setPassword] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('otp') || '';
-  });
   const [records, setRecords] = useState([]);
 
   // Restore unlock state from localStorage (survives refresh)
@@ -113,41 +109,25 @@ export default function EmergencyProfile() {
         }
         fetchRecords(currentPatient.id);
       } else {
-        // If it was revoked, strictly lock the UI
+        // If it was revoked, strictly lock the UI and wipe the local unlock key
+        localStorage.removeItem(`smartcare_unlock_${id}`);
         setTimeout(() => setIsUnlocked(false), 0);
       }
     }
     init();
+
+    // Cross-tab Instant Revocation Listener
+    const handleStorageChange = (e) => {
+      if (e.key === 'smartcare_share' && !e.newValue) {
+        localStorage.removeItem(`smartcare_unlock_${id}`);
+        setIsUnlocked(false);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, [id]);
 
-  // Save unlock + fetch records
-  const unlockAndSave = () => {
-    setIsUnlocked(true);
-    fetchRecords(patient?.id);
-    // Determine expiry: use share timer from localStorage, or default 30 min
-    let expiresAt = Date.now() + 30 * 60 * 1000;
-    try {
-      const share = JSON.parse(localStorage.getItem('smartcare_share'));
-      if (share?.expiresAt) expiresAt = share.expiresAt;
-    } catch { /* ignore error */ }
-    localStorage.setItem(`smartcare_unlock_${id}`, JSON.stringify({ unlocked: true, expiresAt }));
-  };
-
-  const handleUnlock = () => {
-    // Check sharing password
-    if (password === patient.sharing_password) {
-      unlockAndSave();
-      return;
-    }
-    // Check OTP from URL params
-    const params = new URLSearchParams(window.location.search);
-    const urlOtp = params.get('otp');
-    if (urlOtp && password === urlOtp) {
-      unlockAndSave();
-      return;
-    }
-    alert("Verification Failed: Incorrect password or OTP.");
-  };
+  // Removed manual unlockAndSave and handleUnlock as the system is now purely OTP-link driven
 
   if (loading) return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-12">
@@ -248,27 +228,8 @@ export default function EmergencyProfile() {
             </div>
             <h2 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">Clinical Records Encrypted</h2>
             <p className="text-slate-500 mb-12 max-w-sm mx-auto font-medium leading-relaxed italic">
-               Enter the patient's sharing password or the OTP code provided to unlock full medical records.
+               Access strictly permitted via official secure OTP link or active QR scan. Please request a new link if your session expired.
             </p>
-            
-            <div className="max-w-xs mx-auto space-y-6">
-              <div className="relative">
-                <input 
-                  type="password"
-                  placeholder="Enter Password or OTP"
-                  style={{ color: '#000' }}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-5 text-center font-black text-xl tracking-widest focus:ring-4 focus:ring-indigo-100 focus:border-indigo-600 outline-none transition-all shadow-inner"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-              <button 
-                onClick={handleUnlock}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-6 rounded-[1.5rem] flex items-center justify-center gap-3 shadow-2xl shadow-indigo-100 transition-all hover:-translate-y-1 active:scale-[0.98] uppercase tracking-widest text-[10px]"
-              >
-                <Unlock size={20} /> Unlock High-Level Records
-              </button>
-            </div>
           </div>
         ) : (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">

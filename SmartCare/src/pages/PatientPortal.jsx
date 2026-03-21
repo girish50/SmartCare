@@ -84,6 +84,26 @@ export default function PatientPortal() {
     setLoading(false);
   };
 
+  // Realtime updates for medical records
+  useEffect(() => {
+    if (!patient?.id) return;
+    
+    // Subscribe to new medical records for this specific patient
+    const channel = supabase
+      .channel('public:medical_records')
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'medical_records', 
+        filter: `patient_id=eq.${patient.id}` 
+      }, payload => {
+        setRecords(prev => [payload.new, ...prev]);
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [patient?.id]);
+
   // Save bio-data
   const handleSaveBioData = async () => {
     setSaving(true);
