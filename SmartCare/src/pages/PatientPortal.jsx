@@ -9,7 +9,12 @@ import { supabase } from '../utils/supabaseClient';
 
 export default function PatientPortal() {
   const [phone, setPhone] = useState('');
-  const [patient, setPatient] = useState(null);
+  const [patient, setPatient] = useState(() => {
+    try {
+      const p = localStorage.getItem('smartcare_patient_session');
+      return p ? JSON.parse(p) : null;
+    } catch { return null; }
+  });
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -62,6 +67,7 @@ export default function PatientPortal() {
     
     if (data) {
       setPatient(data);
+      localStorage.setItem('smartcare_patient_session', JSON.stringify(data));
       setEditData({
         full_name: data.full_name, age: data.age, blood_group: data.blood_group,
         phone: data.phone, emergency_contact: data.emergency_contact,
@@ -85,6 +91,7 @@ export default function PatientPortal() {
     setSaving(false);
     if (!error) {
       setPatient({ ...patient, ...editData });
+      localStorage.setItem('smartcare_patient_session', JSON.stringify({ ...patient, ...editData }));
       setEditMode(false);
       alert('Bio-data updated!');
     } else alert('Update failed: ' + error.message);
@@ -99,6 +106,7 @@ export default function PatientPortal() {
     setPwSaving(false);
     if (!error) {
       setPatient({ ...patient, sharing_password: newPassword });
+      localStorage.setItem('smartcare_patient_session', JSON.stringify({ ...patient, sharing_password: newPassword }));
       setShowPasswordModal(false); setOldPassword(''); setNewPassword('');
       alert('Password updated!');
     } else alert('Update failed: ' + error.message);
@@ -132,7 +140,7 @@ export default function PatientPortal() {
   useEffect(() => {
     if (shareCountdown <= 0) {
       if (shareLinkActive) {
-        revokeShare();
+        setTimeout(() => revokeShare(), 0);
       }
       return;
     }

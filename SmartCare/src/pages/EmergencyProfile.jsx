@@ -34,7 +34,7 @@ export default function EmergencyProfile() {
       if (saved?.unlocked && saved?.expiresAt && Date.now() < saved.expiresAt) return true;
       // Also check the global share expiry
       const share = JSON.parse(localStorage.getItem('smartcare_share'));
-      if (saved?.unlocked && share?.expiresAt && Date.now() < share.expiresAt) return true;
+      if (share?.expiresAt && Date.now() < share.expiresAt) return true;
     } catch { /* ignore error */ }
     return false;
   });
@@ -86,7 +86,7 @@ export default function EmergencyProfile() {
         const saved = JSON.parse(localStorage.getItem(`smartcare_unlock_${id}`));
         if (saved?.unlocked && saved?.expiresAt && Date.now() < saved.expiresAt) isLocalUnlocked = true;
         const share = JSON.parse(localStorage.getItem('smartcare_share'));
-        if (saved?.unlocked && share?.expiresAt && Date.now() < share.expiresAt) isLocalUnlocked = true;
+        if (share?.expiresAt && Date.now() < share.expiresAt) isLocalUnlocked = true;
       } catch { /* ignore error */ }
 
       if (isLocalUnlocked || urlOtp) {
