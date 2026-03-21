@@ -39,18 +39,20 @@ export default function EmergencyProfile() {
     return false;
   });
 
-  async function fetchRecords() {
+  async function fetchRecords(uuid) {
+    if (!uuid) return;
     const { data, error } = await supabase
       .from('medical_records')
       .select('*')
-      .eq('patient_id', id)
+      .eq('patient_id', uuid)
       .order('created_at', { ascending: false });
     
     if (!error) setRecords(data || []);
   }
 
   useEffect(() => {
-    async function fetchPatient() {
+    async function init() {
+      let currentPatient = null;
       const { data, error } = await supabase
         .from('patients')
         .select('*')
@@ -58,6 +60,7 @@ export default function EmergencyProfile() {
         .single();
       
       if (!error && data) {
+        currentPatient = data;
         setPatient(data);
       } else {
         const { data: uuidData } = await supabase
@@ -65,30 +68,45 @@ export default function EmergencyProfile() {
           .select('*')
           .eq('id', id)
           .single();
-        if (uuidData) setPatient(uuidData);
+        if (uuidData) {
+          currentPatient = uuidData;
+          setPatient(uuidData);
+        }
       }
       setLoading(false);
-    }
-    fetchPatient();
-    
-    // Auto-unlock if OTP is in the URL or already unlocked in localStorage
-    const params = new URLSearchParams(window.location.search);
-    const urlOtp = params.get('otp');
-    
-    if (isUnlocked || urlOtp) {
-      if (!isUnlocked && urlOtp) {
-         let expiresAt = Date.now() + 30 * 60 * 1000;
-         localStorage.setItem(`smartcare_unlock_${id}`, JSON.stringify({ unlocked: true, expiresAt }));
-         setIsUnlocked(true);
+
+      if (!currentPatient) return;
+
+      // Auto-unlock if OTP is in the URL or already unlocked in localStorage
+      const params = new URLSearchParams(window.location.search);
+      const urlOtp = params.get('otp');
+      
+      let isLocalUnlocked = false;
+      try {
+        const saved = JSON.parse(localStorage.getItem(`smartcare_unlock_${id}`));
+        if (saved?.unlocked && saved?.expiresAt && Date.now() < saved.expiresAt) isLocalUnlocked = true;
+        const share = JSON.parse(localStorage.getItem('smartcare_share'));
+        if (saved?.unlocked && share?.expiresAt && Date.now() < share.expiresAt) isLocalUnlocked = true;
+      } catch {}
+
+      if (isLocalUnlocked || urlOtp) {
+        if (!isLocalUnlocked && urlOtp) {
+           let expiresAt = Date.now() + 30 * 60 * 1000;
+           localStorage.setItem(`smartcare_unlock_${id}`, JSON.stringify({ unlocked: true, expiresAt }));
+           setIsUnlocked(true);
+        } else if (isLocalUnlocked) {
+           setIsUnlocked(true);
+        }
+        fetchRecords(currentPatient.id);
       }
-      fetchRecords();
     }
+    init();
   }, [id]);
 
   // Save unlock + fetch records
   const unlockAndSave = () => {
     setIsUnlocked(true);
-    fetchRecords();
+    fetchRecords(patient?.id);
     // Determine expiry: use share timer from localStorage, or default 30 min
     let expiresAt = Date.now() + 30 * 60 * 1000;
     try {
