@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Activity, Users, AlertTriangle, Clock, RefreshCw, Play, Settings2, Zap } from 'lucide-react';
 import SimulationForm from '../components/SimulationForm';
 import PatientFlowTable from '../components/PatientFlowTable';
