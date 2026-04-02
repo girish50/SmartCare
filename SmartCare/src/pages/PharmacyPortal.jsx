@@ -74,9 +74,13 @@ export default function PharmacyPortal() {
 
   // Delete medicine
   const handleDelete = async (id, name) => {
-    if (!confirm(`Remove ${name} from inventory?`)) return;
-    await supabase.from('inventory').delete().eq('id', id);
-    fetchInventory();
+    // Direct delete without browser confirm popup (which can be blocked)
+    const { error } = await supabase.from('inventory').delete().eq('id', id);
+    if (error) {
+      alert("Failed to delete: " + error.message);
+    } else {
+      fetchInventory();
+    }
   };
 
   const filtered = inventory.filter(i => i.medicine_name.toLowerCase().includes(filter.toLowerCase()));
@@ -257,12 +261,12 @@ export default function PharmacyPortal() {
               </div>
            </div>
 
-           <div className="glass-card p-10 bg-indigo-600 text-white shadow-2xl shadow-indigo-100 relative overflow-hidden">
+           <div className="glass-card p-6 bg-indigo-600 text-white shadow-2xl shadow-indigo-100 relative">
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
-              <h4 className="text-md font-black uppercase tracking-tight mb-4 flex items-center gap-3">
+              <h4 className="text-md font-black uppercase tracking-tight mb-3 flex items-center gap-3">
                 <ShieldCheck className="text-indigo-200" size={20} /> Batch Verification
               </h4>
-              <p className="text-xs font-medium mb-8 leading-relaxed opacity-80 italic">
+              <p className="text-xs font-medium mb-4 leading-relaxed opacity-80 italic">
                 All scheduled pharmacological protocols are synced with the Clinical Decision Suite for Patient P1022 - P1050.
               </p>
               <div className="p-3 bg-white/10 rounded-xl border border-white/20 text-[8px] font-black uppercase tracking-[0.2em] text-center">

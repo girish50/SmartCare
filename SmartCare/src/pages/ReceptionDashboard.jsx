@@ -42,7 +42,7 @@ export default function ReceptionDashboard() {
       alert('Patient not found in SmartCare Registry. Please verify the ID or Phone Number.');
     }
   };
-
+/*
   const runAITriage = () => {
     if (!symptoms) return;
     setIsProcessing(true);
@@ -69,6 +69,113 @@ export default function ReceptionDashboard() {
     }, 1500);
   };
 
+  */
+ const runAITriage = () => {
+  if (!symptoms) return;
+  setIsProcessing(true);
+  
+  setTimeout(() => {
+    const s = symptoms.toLowerCase();
+
+    let priority = 'LOW';
+    let dept = 'General Medicine';
+    let color = 'teal';
+
+    // 🔴 CRITICAL (ESI Level 1 - Immediate life-saving)
+    if (
+      s.includes('cardiac arrest') ||
+      s.includes('no pulse') ||
+      s.includes('not breathing') ||
+      s.includes('respiratory failure') ||
+      s.includes('oxygen low') ||
+      s.includes('spo2 below 90') ||
+      s.includes('severe chest pain') ||
+      s.includes('heart attack') ||
+      s.includes('stroke') ||
+      s.includes('face drooping') ||
+      s.includes('cannot speak') ||
+      s.includes('unconscious') ||
+      s.includes('gcs low') ||
+      s.includes('seizure ongoing') ||
+      s.includes('active seizure') ||
+      s.includes('severe trauma') ||
+      s.includes('road accident') ||
+      s.includes('polytrauma') ||
+      s.includes('severe burns') ||
+      s.includes('third degree burn') ||
+      s.includes('heavy bleeding') ||
+      s.includes('hemorrhage') ||
+      s.includes('shock') ||
+      s.includes('bp very low') ||
+      s.includes('anaphylaxis') ||
+      s.includes('airway blocked') ||
+      s.includes('poison ingestion') ||
+      s.includes('drug overdose')
+    ) {
+      priority = 'CRITICAL';
+      dept = 'Emergency / ICU';
+      color = 'rose';
+    }
+
+    // 🟠 HIGH (ESI Level 2 - High risk / urgent)
+    else if (
+      s.includes('high fever above 39') ||
+      s.includes('persistent fever') ||
+      s.includes('tachycardia') || // high heart rate
+      s.includes('bradycardia') || // low heart rate
+      s.includes('bp high') ||
+      s.includes('hypertension crisis') ||
+      s.includes('moderate chest pain') ||
+      s.includes('breathing difficulty') ||
+      s.includes('asthma attack') ||
+      s.includes('copd') ||
+      s.includes('vomiting continuously') ||
+      s.includes('severe dehydration') ||
+      s.includes('diarrhea severe') ||
+      s.includes('severe abdominal pain') ||
+      s.includes('appendicitis') ||
+      s.includes('kidney stone pain') ||
+      s.includes('fracture') ||
+      s.includes('dislocation') ||
+      s.includes('infection spreading') ||
+      s.includes('sepsis suspected') ||
+      s.includes('urinary retention') ||
+      s.includes('allergic reaction severe') ||
+      s.includes('migraine severe')
+    ) {
+      priority = 'HIGH';
+      dept = 'Internal Medicine / Emergency';
+      color = 'amber';
+    }
+
+    // 🟡 MEDIUM (ESI Level 3 - Needs tests but stable)
+    else if (
+      s.includes('moderate fever') ||
+      s.includes('cough with fever') ||
+      s.includes('mild dehydration') ||
+      s.includes('skin infection') ||
+      s.includes('ear pain') ||
+      s.includes('throat infection') ||
+      s.includes('uti mild') ||
+      s.includes('back pain') ||
+      s.includes('joint pain')
+    ) {
+      priority = 'MEDIUM';
+      dept = 'General Medicine';
+      color = 'yellow';
+    }
+
+    // 🟢 LOW (ESI Level 4/5 - Minor)
+    else {
+      priority = 'LOW';
+      dept = 'General Medicine';
+      color = 'teal';
+    }
+
+    setTriageResult({ priority, dept, color });
+    setIsProcessing(false);
+  }, 1500);
+};
   const completeCheckIn = async () => {
     setIsCheckingIn(true);
     // Add to live queue using the UUID (id) for DB integrity but tracking patient_id for display
