@@ -11,13 +11,13 @@ import { runMonteCarloSim } from '../simulation/simulationController';
 
 export default function SimulationDashboard() {
   const [config, setConfig] = useState({
-    scenario: 'Normal',
-    arrivalRate: 10,
-    durationHours: 6,
-    doctors: 5,
-    icuBeds: 8,
-    ventilators: 4,
-    erRooms: 10
+    scenario: 'Winter Outbreak',
+    arrivalRate: 45,
+    durationHours: 12,
+    doctors: 12,
+    icuBeds: 24,
+    ventilators: 15,
+    erRooms: 30
   });
 
   const [results, setResults] = useState(null);
@@ -35,6 +35,12 @@ export default function SimulationDashboard() {
   const handleReset = () => {
     setResults(null);
   };
+
+  // Auto-run once on component mount so graphs are never idle
+  useEffect(() => {
+    handleRun();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="bg-white min-h-[800px] rounded-[2rem] shadow-sm overflow-hidden text-left">

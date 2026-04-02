@@ -201,26 +201,51 @@ export default function AdminDashboard() {
 
                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
                     <div className="lg:col-span-8 space-y-10">
-                       <div className="glass-card p-10 bg-white">
-                          <div className="flex items-center justify-between mb-10">
+                       <div className="glass-card p-10 bg-white border-t-8 border-indigo-600 shadow-sm hover:shadow-xl transition-all duration-500">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
                             <h3 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-                              <Globe size={24} className="text-indigo-600" /> Regional Health Map
+                              <Activity size={24} className="text-indigo-600" /> Live Clinical Workload Matrix
                             </h3>
-                            <span className="px-4 py-1.5 bg-rose-50 text-rose-600 text-[10px] font-black rounded-full border border-rose-100 uppercase animate-pulse">Live Outbreak Alert</span>
+                            <span className="px-4 py-2 bg-indigo-50 text-indigo-600 text-[10px] font-black rounded-full border border-indigo-100 uppercase tracking-widest flex items-center gap-2">
+                               <div className="w-2 h-2 bg-indigo-600 rounded-full animate-pulse"></div> System Auto-Balancing Active
+                            </span>
                           </div>
-                          <div className="aspect-video bg-slate-50 rounded-3xl border border-slate-100 relative overflow-hidden flex items-center justify-center p-12">
-                             <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl"></div>
-                             <div className="text-center relative z-10">
-                                <Activity className="mx-auto text-indigo-200 mb-6" size={80} strokeWidth={1} />
-                                <h4 className="text-2xl font-black text-slate-900">Simulated Health Heatmap</h4>
-                                <p className="text-sm text-slate-400 font-medium max-w-sm mx-auto mt-2 leading-relaxed">
-                                  Regional Flu levels are 14% higher in Zone 7. System recommending +2 Doctors for Evening Shift.
-                                </p>
-                             </div>
-                             {/* Mock Map Markers */}
-                             <div className="absolute top-1/4 left-1/3 w-4 h-4 bg-rose-500 rounded-full animate-ping opacity-20"></div>
-                             <div className="absolute top-1/4 left-1/3 w-2 h-2 bg-rose-500 rounded-full shadow-[0_0_10px_rgba(244,63,94,0.5)]"></div>
-                             <div className="absolute bottom-1/3 right-1/4 w-3 h-3 bg-teal-500 rounded-full opacity-50 shadow-[0_0_10px_rgba(20,184,166,0.5)]"></div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                             {[
+                               { dept: 'Emergency ER', utilization: 92, staff: '4/5', trend: 'Critical Surge', color: 'rose' },
+                               { dept: 'General Ward A', utilization: 65, staff: '8/10', trend: 'Stable', color: 'emerald' },
+                               { dept: 'ICU Unit', utilization: 88, staff: '6/6', trend: 'Near Capacity', color: 'amber' },
+                               { dept: 'Pediatrics', utilization: 45, staff: '3/4', trend: 'Optimal', color: 'teal' },
+                               { dept: 'Cardiology', utilization: 78, staff: '5/6', trend: 'High Volume', color: 'indigo' },
+                               { dept: 'Neurology', utilization: 30, staff: '2/3', trend: 'Low Volume', color: 'slate' }
+                             ].map((zone, i) => (
+                                <div key={i} className={`p-6 rounded-2xl border ${zone.color === 'rose' ? 'bg-rose-50 border-rose-100' : zone.color === 'amber' ? 'bg-amber-50 border-amber-100' : 'bg-slate-50 border-slate-100'} transition-transform hover:-translate-y-1`}>
+                                   <div className="flex justify-between items-start mb-4">
+                                      <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">{zone.dept}</h4>
+                                      <span className={`text-[9px] font-bold uppercase tracking-widest py-1 px-2 rounded-md ${zone.color === 'rose' ? 'bg-white text-rose-600' : zone.color === 'amber' ? 'bg-white text-amber-600' : 'bg-white text-indigo-600'}`}>
+                                         {zone.trend}
+                                      </span>
+                                   </div>
+                                   <div className="flex justify-between items-end mb-3">
+                                      <span className={`text-4xl font-black tracking-tighter ${zone.color === 'rose' ? 'text-rose-600' : zone.color === 'amber' ? 'text-amber-600' : 'text-indigo-600'}`}>
+                                         {zone.utilization}<span className="text-xl">%</span>
+                                      </span>
+                                      <span className="text-[10px] font-black uppercase text-slate-400">Capacity</span>
+                                   </div>
+                                   <div className="w-full bg-slate-200/50 h-2 rounded-full overflow-hidden mb-4 border border-slate-200/50">
+                                      <div className={`h-full rounded-full ${zone.color === 'rose' ? 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]' : zone.color === 'amber' ? 'bg-amber-500' : 'bg-indigo-500'}`} style={{ width: `${zone.utilization}%` }}></div>
+                                   </div>
+                                   <div className="flex justify-between items-center text-[10px] uppercase font-bold tracking-widest pt-3 border-t border-slate-200/50">
+                                      <span className="text-slate-500 flex items-center gap-1"><Users size={12}/> {zone.staff} Docs Active</span>
+                                   </div>
+                                </div>
+                             ))}
+                          </div>
+                          
+                          <div className="mt-8 p-4 bg-slate-50 border border-slate-100 rounded-xl flex items-center gap-3">
+                            <Activity className="text-slate-400" size={16} />
+                            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest italic">AI Recommends re-routing 2 ER doctors to the ICU for the evening shift.</p>
                           </div>
                        </div>
                     </div>
@@ -398,12 +423,12 @@ export default function AdminDashboard() {
                         <div>
                           <h2 className="text-2xl font-black text-white uppercase tracking-tight">Financial Impact Forecasting</h2>
                           <p className="text-indigo-100 font-medium text-lg leading-relaxed mt-2 opacity-90 max-w-2xl">
-                            ERNova predicts a potential revenue loss of <strong>$12,400</strong> this morning if current staff levels aren't increased to meet the simulated surge.
+                            ERNova predicts a potential revenue loss of <strong>$145,500</strong> this shift if clinical workflows are not optimized to meet the simulated Winter Outbreak surge.
                           </p>
                         </div>
                         <div className="bg-white/20 px-6 py-4 rounded-3xl text-center backdrop-blur">
                             <span className="block text-[8px] font-black text-white uppercase tracking-widest mb-1">Predicted Loss</span>
-                            <span className="text-2xl font-black text-rose-300">-$12.4k</span>
+                            <span className="text-3xl font-black text-rose-300">-$145.5k</span>
                         </div>
                       </div>
                     </div>
